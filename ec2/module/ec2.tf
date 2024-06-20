@@ -14,17 +14,25 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
-data "aws_subnet" "subnet" {
-  vpc_id     = var.vpc_id
-  cidr_block = "10.0.101.0/24" # public subnet CIDR
+data "aws_subnets" "public_subnets" {
+  filter {
+    name   = "vpc-id"
+    values = [var.vpc_id]
+  }
+
+  filter {
+    name   = "map-public-ip-on-launch"
+    values = [true]
+  }
 }
 
 resource "aws_instance" "ubuntu" {
   depends_on = [
     aws_security_group.allow_ssh,
+    data.aws_subnets.public_subnets
   ]
 
-  subnet_id     = data.aws_subnet.subnet.id
+  subnet_id     = data.aws_subnets.public_subnets.ids[0]
   ami           = var.ami_id != "" ? var.ami_id : data.aws_ami.ubuntu.id
   instance_type = var.instance_type
   key_name      = var.key_pair
